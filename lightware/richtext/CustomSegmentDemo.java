@@ -25,7 +25,7 @@ public class CustomSegmentDemo extends Application {
 
         textArea.replaceText(0, 0, "This example shows how to add custom nodes, for example Labels ");
 
-        textArea.append( new LabelSegment("Result Field","") );
+        textArea.append( new LabelSegment("Result Field") );
 
         textArea.appendText(" Now, select some text from above (including one or more of the custom objects) using CTRL-C, and paste it somewhere in the document with CTRL-V.");
 
