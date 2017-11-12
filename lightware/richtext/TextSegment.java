@@ -1,5 +1,8 @@
 package lightware.richtext;
 import java.util.Optional;
+
+import org.fxmisc.richtext.TextExt;
+
 import javafx.scene.Node;
 import javafx.scene.text.Text;
 
@@ -7,17 +10,17 @@ public class TextSegment extends AbstractSegment
 {
 	private final String text;
 
-	public TextSegment( Object text, String style )
+	public TextSegment( Object text )
 	{
-		super( text, style );
+		super( text );
 		this.text = text.toString();
 	}
 
 	@Override
-	public Node createNode()
+	public Node createNode( String style )
 	{
-		Text  textNode = new Text( text );
-		if ( style != NO_STYLE ) textNode.getStyleClass().add( style );
+		Text  textNode = new TextExt( text );
+		if ( style != null && ! style.isEmpty() ) textNode.getStyleClass().add( style );
 		return textNode;
 	}
 
@@ -39,7 +42,7 @@ public class TextSegment extends AbstractSegment
 		if ( start == 0 && end == length() )  return Optional.of( this );
 		return Optional.of
 		(
-			new TextSegment( text.substring( start, end ), style )
+			new TextSegment( text.substring( start, end ) )
 		);
 	}
 
@@ -48,13 +51,10 @@ public class TextSegment extends AbstractSegment
 	{
 		if ( nextSeg instanceof TextSegment )
 		{
-			if ( getStyle().equals( nextSeg.getStyle() ) )
-			{
-				return Optional.of
-				(
-					new TextSegment( text + nextSeg.getText(), style )
-				);
-			}
+			return Optional.of
+			(
+				new TextSegment( text + nextSeg.getText() )
+			);
 		}
 		return Optional.empty();
 	}
