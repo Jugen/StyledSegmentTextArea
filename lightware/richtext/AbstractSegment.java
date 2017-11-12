@@ -15,28 +15,12 @@ import javafx.scene.Node;
 public abstract class AbstractSegment
 {
 	protected final Object  data;
-	protected String  style = NO_STYLE;
-	protected static final String NO_STYLE = "";
 
 	private AbstractSegment() { data = null; }
 
-	public AbstractSegment( Object data, String style )
+	public AbstractSegment( Object data )
 	{
-		setStyle( style );
 		this.data = data;
-	}
-
-	public void setStyle( String style )
-	{
-		if ( style != null && ! style.isEmpty() )
-		{
-			this.style = style;
-		}
-	}
-
-	public String getStyle()
-	{
-		return style;
 	}
 
 	public String getText() { return "\ufffc"; }
@@ -58,7 +42,7 @@ public abstract class AbstractSegment
 		return Optional.empty();
 	}
 
-	public abstract Node createNode();
+	public abstract Node createNode( String style );
 
 	/**
 	 * RichTextFX uses this for undo and redo.
@@ -68,8 +52,7 @@ public abstract class AbstractSegment
     	if ( obj == this )  return true;
     	else if ( obj instanceof AbstractSegment && getClass().equals( obj.getClass() ) )
         {
-        	AbstractSegment otherSeg = (AbstractSegment) obj;
-            return getText().equals( otherSeg.getText() ) && getStyle().equals( otherSeg.getStyle() );
+            return getText().equals( ((AbstractSegment) obj).getText() );
         }
 
         return false;
