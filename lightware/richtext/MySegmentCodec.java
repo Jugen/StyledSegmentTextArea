@@ -9,8 +9,9 @@ import java.io.Writer;
 import java.lang.reflect.Constructor;
 import javax.xml.bind.JAXB;
 import org.fxmisc.richtext.model.Codec;
+import org.fxmisc.richtext.model.StyledSegment;
 
-public class MySegmentCodec implements Codec<AbstractSegment>
+public class MySegmentCodec implements Codec<StyledSegment<AbstractSegment,String>>
 {
 	@Override
 	public String getName()
@@ -19,8 +20,10 @@ public class MySegmentCodec implements Codec<AbstractSegment>
 	}
 
 	@Override
-	public void encode( DataOutputStream os, AbstractSegment seg ) throws IOException
+	public void encode( DataOutputStream os, StyledSegment<AbstractSegment,String> styledSeg ) throws IOException
 	{
+		AbstractSegment  seg = styledSeg.getSegment();
+		
 		os.writeUTF( seg.getClass().getName() );
 		os.writeUTF( seg.getData().getClass().getName() );
 
@@ -28,11 +31,11 @@ public class MySegmentCodec implements Codec<AbstractSegment>
 		JAXB.marshal( seg.getData(), data2xml );
 		os.writeUTF( data2xml.toString() );
 
-		os.writeUTF( seg.getStyle() );
+		os.writeUTF( styledSeg.getStyle() );
 	}
 
 	@Override
-	public AbstractSegment decode( DataInputStream is ) throws IOException
+	public StyledSegment<AbstractSegment,String> decode( DataInputStream is ) throws IOException
 	{
 		String  segmentType = is.readUTF();
 		String  dataType = is.readUTF();
@@ -46,9 +49,9 @@ public class MySegmentCodec implements Codec<AbstractSegment>
 			Object  data = JAXB.unmarshal( xml2data, dataClass );
 
 			Class<AbstractSegment>  segClass = (Class<AbstractSegment>) Class.forName( segmentType );
-			Constructor<AbstractSegment>  segCreate = segClass.getConstructor( Object.class, String.class );
+			Constructor<AbstractSegment>  segCreate = segClass.getConstructor( Object.class );
 
-			return  segCreate.newInstance( data, style );
+			return new StyledSegment( segCreate.newInstance( data ), style );
 		}
 		catch ( Exception EX )
 		{
