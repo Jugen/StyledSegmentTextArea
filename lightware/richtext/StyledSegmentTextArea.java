@@ -4,6 +4,7 @@ import java.util.function.Function;
 import org.fxmisc.richtext.GenericStyledArea;
 import org.fxmisc.richtext.model.Codec;
 import org.fxmisc.richtext.model.ReadOnlyStyledDocument;
+import org.fxmisc.richtext.model.StyledSegment;
 import org.fxmisc.richtext.model.TextOps;
 import javafx.scene.Node;
 import javafx.scene.text.TextFlow;
@@ -17,7 +18,7 @@ public class StyledSegmentTextArea extends GenericStyledArea<String,AbstractSegm
 	private static final BiConsumer<TextFlow,String>  applyParStyle = (txtflow,pstyle) -> txtflow.getStyleClass().add( pstyle );
 	private static final TextOps<AbstractSegment,String>  segmentOps = new MySegmentOps();
 
-	public StyledSegmentTextArea( Function<AbstractSegment, Node> nodeFactory )
+	public StyledSegmentTextArea( Function<StyledSegment<AbstractSegment, String>, Node> nodeFactory )
 	{
 		super( initialParStyle, applyParStyle, initialSegStyle, segmentOps, preserveStyle, nodeFactory );
     	setStyleCodecs( Codec.STRING_CODEC, new MySegmentCodec() );	 // Needed for copy paste.
@@ -26,7 +27,7 @@ public class StyledSegmentTextArea extends GenericStyledArea<String,AbstractSegm
 
 	public StyledSegmentTextArea()
 	{
-		this( seg -> seg.createNode() );
+		this( styledSeg -> styledSeg.getSegment().createNode( styledSeg.getStyle() ) ); 
 	}
 
 	public void append( AbstractSegment customSegment )
