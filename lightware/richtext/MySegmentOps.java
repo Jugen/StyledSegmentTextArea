@@ -4,17 +4,17 @@ import org.fxmisc.richtext.model.TextOps;
 
 public class MySegmentOps implements TextOps<AbstractSegment,String>
 {
-	private final AbstractSegment EMPTY = new TextSegment("","");
+	private final AbstractSegment EMPTY = new TextSegment("");
 
 	@Override
-	public AbstractSegment create( String text, String style )
+	public AbstractSegment create( String text )
 	{
 		if ( text == null || text.isEmpty() )  return EMPTY;
-		return new TextSegment( text, style );
+		return new TextSegment( text );
 	}
 
 	@Override
-	public AbstractSegment createEmpty()
+	public AbstractSegment createEmptySeg()
 	{
 		return EMPTY;
 	}
@@ -23,19 +23,6 @@ public class MySegmentOps implements TextOps<AbstractSegment,String>
 	public char charAt( AbstractSegment seg, int index )
 	{
 		return seg.charAt( index );
-	}
-
-	@Override
-	public String getStyle( AbstractSegment seg )
-	{
-		return seg.getStyle();
-	}
-
-	@Override
-	public AbstractSegment setStyle( AbstractSegment seg, String style )
-	{
-		seg.setStyle( style );	// TODO Undo / Redo might require that this returns a new object ?
-		return seg;
 	}
 
 	@Override
@@ -51,21 +38,21 @@ public class MySegmentOps implements TextOps<AbstractSegment,String>
 	}
 
 	@Override
-	public Optional<AbstractSegment> subSequence( AbstractSegment seg, int start, int end )
+	public AbstractSegment subSequence( AbstractSegment seg, int start )
 	{
-		if ( start == seg.length() || end == 0 ) return Optional.of( EMPTY );
-		return seg.subSequence( start, end );
+		return subSequence( seg, start, seg.length() );
 	}
 
 	@Override
-	public Optional<AbstractSegment> subSequence( AbstractSegment seg, int start )
+	public AbstractSegment subSequence( AbstractSegment seg, int start, int end )
 	{
-		if ( start == seg.length() ) return Optional.of( EMPTY );
-		return seg.subSequence( start, seg.length() );
+		if ( start == seg.length() || end == 0 ) return EMPTY;
+		Optional<AbstractSegment>  opt = seg.subSequence( start, end );
+		return opt.orElse( EMPTY );
 	}
 
 	@Override
-	public Optional<AbstractSegment> join( AbstractSegment currentSeg, AbstractSegment nextSeg )
+	public Optional<AbstractSegment> joinSeg( AbstractSegment currentSeg, AbstractSegment nextSeg )
 	{
 		return currentSeg.join( nextSeg );
 	}
