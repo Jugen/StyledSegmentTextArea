@@ -4,6 +4,10 @@ import javafx.scene.control.Label;
 
 public class LabelSegment extends AbstractSegment
 {
+	/**
+	 * Displays data.toString() in a Label<br>
+	 * @param data is embedded in the Label using setUserData 
+	 */
 	public LabelSegment( Object data )
 	{
 		super( data );
