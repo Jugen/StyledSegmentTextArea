@@ -31,7 +31,9 @@ public class MySegmentCodec implements Codec<StyledSegment<AbstractSegment,Strin
 		JAXB.marshal( seg.getData(), data2xml );
 		os.writeUTF( data2xml.toString() );
 
-		os.writeUTF( styledSeg.getStyle() );
+		String  style = styledSeg.getStyle();
+		if ( style == null ) style = "";
+		os.writeUTF( style );
 	}
 
 	@Override
