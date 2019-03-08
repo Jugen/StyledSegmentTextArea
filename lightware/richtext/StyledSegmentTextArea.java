@@ -11,9 +11,9 @@ import javafx.scene.text.TextFlow;
 
 public class StyledSegmentTextArea extends GenericStyledArea<String,AbstractSegment,String>
 {
-	private static final String  initialParStyle = "";		// May not be null, otherwise copy paste fails !
-	private static final String  initialSegStyle = "";
-	private static final boolean preserveStyle = true;		// May not be false, otherwise undo doesn't work on custom nodes !
+	private static final String  initialParStyle = "";  // May not be null, otherwise copy paste fails !
+	private static final String  initialSegStyle = "";  // May not be null, otherwise copy paste fails !
+	private static final boolean preserveStyle = true;  // May not be false, otherwise undo doesn't work on custom nodes !
 
 	private static final BiConsumer<TextFlow,String>  applyParStyle = (txtflow,pstyle) -> txtflow.getStyleClass().add( pstyle );
 	private static final TextOps<AbstractSegment,String>  segmentOps = new MySegmentOps();
