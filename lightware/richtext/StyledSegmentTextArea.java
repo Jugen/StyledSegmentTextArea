@@ -1,11 +1,14 @@
 package lightware.richtext;
+import java.text.BreakIterator;
 import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 
 import org.fxmisc.richtext.GenericStyledArea;
+import org.fxmisc.richtext.Selection.Direction;
 import org.fxmisc.richtext.model.Codec;
 import org.fxmisc.richtext.model.Paragraph;
 import org.fxmisc.richtext.model.ReadOnlyStyledDocument;
@@ -44,12 +47,37 @@ public class StyledSegmentTextArea extends GenericStyledArea<String,AbstractSegm
         setStyleCodecs( Codec.STRING_CODEC, new MySegmentCodec() );     // Needed for copy paste.
         setWrapText(true);
         
+        // Intercept Enter to insert an indent after an empty line.
         addEventHandler( KeyEvent.KEY_PRESSED, KE ->
         {
             if ( indent && KE.getCode() == KeyCode.ENTER ) {
                 int caretPosition = getCaretPosition();
                 if ( getParagraph( getCurrentParagraph()-1 ).length() == 0 ) {
                     Platform.runLater( () -> replace( caretPosition, caretPosition, INDENT_DOC ) );
+                }
+            }
+        });
+        
+        // Hijack Ctrl+Left (incl Shift) to navigate around an indent.
+        addEventFilter( KeyEvent.KEY_PRESSED, KE ->
+        {
+            if ( KE.isShortcutDown() ) switch ( KE.getCode() )
+            {
+                case LEFT : case KP_LEFT : {
+                    this.skipToPrevWord( KE.isShiftDown() );
+                    KE.consume();
+                    break;
+                }
+            }
+        });
+
+        // Prevent the caret from appearing on the left hand side of an indent.
+        caretPositionProperty().addListener( (ob,oldPos,newPos) ->
+        {
+            if ( indent && getCaretColumn() == 0 ) {
+                AbstractSegment seg = getParagraph( getCurrentParagraph() ).getSegments().get(0);
+                if ( seg instanceof IndentSegment ) {
+                    displaceCaret( newPos + 1 );
                 }
             }
         });
@@ -103,5 +131,117 @@ public class StyledSegmentTextArea extends GenericStyledArea<String,AbstractSegm
             super.replace( start, end, db.build() );
         }
     }
+
+    @Override // Navigating around/over indents
+    public void nextChar( SelectionPolicy policy )
+    {
+        if ( getCaretPosition() < getLength() ) {
+            // offsetByCodePoints throws an IndexOutOfBoundsException unless colPos is adjusted to accommodate any indents, see this.moveTo
+            moveTo( Direction.RIGHT, policy, (paragraphText,colPos) -> Character.offsetByCodePoints( paragraphText, colPos, +1 ) );
+        }
+    }
     
+    @Override // Navigating around/over indents
+    public void previousChar( SelectionPolicy policy )
+    {
+        if ( getCaretPosition() > 0 ) {
+            // offsetByCodePoints throws an IndexOutOfBoundsException unless colPos is adjusted to accommodate any indents, see this.moveTo 
+            moveTo( Direction.LEFT, policy, (paragraphText,colPos) -> Character.offsetByCodePoints( paragraphText, colPos, -1 ) );
+        }
+    }
+
+    // Handles Ctrl+Left and Ctrl+Shift+Left
+    private void skipToPrevWord( boolean isShiftDown )
+    {
+        int caretPos = getCaretPosition();
+        if ( caretPos >= 1 )
+        {
+            boolean prevCharIsWhiteSpace = false;
+            if ( indent && getCaretColumn() == 1 ) {
+                // Check for indent as charAt(0) throws an IndexOutOfBoundsException because Indents aren't represented by a character 
+                AbstractSegment seg = getParagraph( getCurrentParagraph() ).getSegments().get(0);
+                prevCharIsWhiteSpace = seg instanceof IndentSegment;
+            }
+            if ( ! prevCharIsWhiteSpace ) prevCharIsWhiteSpace = Character.isWhitespace( getText( caretPos-1, caretPos ).charAt(0) );
+            wordBreaksBackwards( prevCharIsWhiteSpace ? 2 : 1, isShiftDown ? SelectionPolicy.ADJUST : SelectionPolicy.CLEAR );
+        }
+    }
+
+    /**
+     * Skips n number of word boundaries backwards.
+     */
+    @Override // Accommodating Indent
+    public void wordBreaksBackwards( int n, SelectionPolicy selection )
+    {
+        if( getLength() == 0 ) return;
+
+        moveTo( Direction.LEFT, selection, (paragraphText,colPos) ->
+        {
+            BreakIterator wordIterator = BreakIterator.getWordInstance();
+            wordIterator.setText( paragraphText );
+            wordIterator.preceding( colPos );
+            for ( int i = 1; i < n; i++ ) {
+                wordIterator.previous();
+            }
+            return wordIterator.current();
+        });
+    }
+
+    /**
+     * Skips n number of word boundaries forward.
+     */
+    @Override // Accommodating Indent
+    public void wordBreaksForwards( int n, SelectionPolicy selection )
+    {
+        if( getLength() == 0 ) return;
+
+        moveTo( Direction.RIGHT, selection, (paragraphText,colPos) ->
+        {
+            BreakIterator wordIterator = BreakIterator.getWordInstance();
+            wordIterator.setText( paragraphText );
+            wordIterator.following( colPos );
+            for ( int i = 1; i < n; i++ ) {
+                wordIterator.next();
+            }
+            return wordIterator.current();
+        });
+    }
+    
+    /**
+     * Because Indents are not represented in the text by a character there is a discrepancy
+     * between the caret position and the text position which has to be taken into account.
+     * So this method ADJUSTS the caret position before invoking the supplied function.    
+     * 
+     * @param dir LEFT for backwards, and RIGHT for forwards
+     * @param selection CLEAR or ADJUST
+     * @param colPosCalculator a function that receives PARAGRAPH text and an ADJUSTED
+     * starting column position as parameters and returns an end column position.  
+     */
+    private void moveTo( Direction dir, SelectionPolicy selection, BiFunction<String,Integer,Integer> colPosCalculator )
+    {
+        int colPos = getCaretColumn();
+        int pNdx = getCurrentParagraph();
+        Paragraph p = getParagraph( pNdx );
+        int pLen = p.length();
+
+        boolean adjustCol = indent && p.getSegments().get(0) instanceof IndentSegment;
+        if ( adjustCol ) colPos--;
+        
+        if ( dir == Direction.LEFT && colPos == 0 ) {
+            p = getParagraph( --pNdx );
+            adjustCol = indent && p.getSegments().get(0) instanceof IndentSegment;
+            colPos = p.getText().length(); // don't simplify !
+        }
+        else if ( dir == Direction.RIGHT && (pLen == 0 || colPos >= pLen-1) )
+        {
+            p = getParagraph( ++pNdx );
+            adjustCol = indent && p.getSegments().get(0) instanceof IndentSegment;
+            colPos = 0;
+        }
+        else colPos = colPosCalculator.apply( p.getText(), colPos );
+
+        if ( adjustCol ) colPos++;
+
+        moveTo( pNdx, colPos, selection );
+    }
 }
