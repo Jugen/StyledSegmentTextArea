@@ -74,9 +74,9 @@ public class StyledSegmentTextArea extends GenericStyledArea<String,AbstractSegm
         // Prevent the caret from appearing on the left hand side of an indent.
         caretPositionProperty().addListener( (ob,oldPos,newPos) ->
         {
-            if ( indent && getCaretColumn() == 0 ) {
+            if ( indent && newPos < getLength() && getCaretColumn() == 0 ) {
                 AbstractSegment seg = getParagraph( getCurrentParagraph() ).getSegments().get(0);
-                if ( seg instanceof IndentSegment ) {
+                if ( seg instanceof IndentSegment && getSelection().getLength() == 0 ) {
                     displaceCaret( newPos + 1 );
                 }
             }
@@ -147,6 +147,16 @@ public class StyledSegmentTextArea extends GenericStyledArea<String,AbstractSegm
         if ( getCaretPosition() > 0 ) {
             // offsetByCodePoints throws an IndexOutOfBoundsException unless colPos is adjusted to accommodate any indents, see this.moveTo 
             moveTo( Direction.LEFT, policy, (paragraphText,colPos) -> Character.offsetByCodePoints( paragraphText, colPos, -1 ) );
+        }
+    }
+
+    public void deletePreviousChar()
+    {
+        if ( getCaretPosition() > 0 ) {
+            // offsetByCodePoints throws an IndexOutOfBoundsException unless colPos is adjusted to accommodate any indents, see this.moveTo
+            moveTo( Direction.LEFT, SelectionPolicy.CLEAR, (paragraphText,colPos) -> Character.offsetByCodePoints( paragraphText, colPos, -1 ) );
+            int col = getCaretPosition();
+            deleteText( col, col+1 );
         }
     }
 
@@ -227,12 +237,12 @@ public class StyledSegmentTextArea extends GenericStyledArea<String,AbstractSegm
         boolean adjustCol = indent && p.getSegments().get(0) instanceof IndentSegment;
         if ( adjustCol ) colPos--;
         
-        if ( dir == Direction.LEFT && colPos == 0 ) {
+        if ( dir == Direction.LEFT && colPos == 0 && pNdx > 0 ) {
             p = getParagraph( --pNdx );
             adjustCol = indent && p.getSegments().get(0) instanceof IndentSegment;
             colPos = p.getText().length(); // don't simplify !
         }
-        else if ( dir == Direction.RIGHT && (pLen == 0 || colPos >= pLen-1) )
+        else if ( dir == Direction.RIGHT && (pLen == 0 || colPos >= pLen-1) && pNdx < getParagraphs().size()-1 )
         {
             p = getParagraph( ++pNdx );
             adjustCol = indent && p.getSegments().get(0) instanceof IndentSegment;
