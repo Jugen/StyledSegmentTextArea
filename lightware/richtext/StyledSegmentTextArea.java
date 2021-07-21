@@ -254,4 +254,55 @@ public class StyledSegmentTextArea extends GenericStyledArea<String,AbstractSegm
 
         moveTo( pNdx, colPos, selection );
     }
+
+    @Override
+    public String getText()
+    {
+        var sb = new StringBuilder( getLength() );
+        
+        for ( var p : getParagraphs() )
+        {
+            // TODO s.getData().toString() is a bit naive maybe ?
+            for ( var s : p.getSegments() ) sb.append( s.getData().toString() );
+            sb.append( '\n' );
+        }
+
+        return sb.toString();
+    }
+    
+    // See discussion at https://github.com/FXMisc/RichTextFX/issues/1024#issuecomment-884154027
+    public int dataTextToRichTextPos( int targetPos )
+    {
+       int dataTextPos = 0, richTextPos = 0;
+
+       for( var p : getParagraphs() )
+       {
+          if ( dataTextPos == targetPos ) return richTextPos;
+
+          for( var seg : p.getSegments() )
+          {
+             if ( seg instanceof TextSegment )
+             {
+                var len = seg.length();
+                if ( dataTextPos + len > targetPos ) len = targetPos - dataTextPos;
+                dataTextPos += len;
+                richTextPos += len;
+             }
+             else // some other segment type
+             {
+                 // TODO s.getData().toString() is a bit naive maybe ?
+                dataTextPos += seg.getData().toString().length();
+                richTextPos += 1;
+             }
+
+             if ( dataTextPos == targetPos ) return richTextPos;
+          }
+
+          // Plus 1 for paragraph and line breaks
+          dataTextPos++;
+          richTextPos++;
+       }
+
+       return richTextPos;
+    }
 }
